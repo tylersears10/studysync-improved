@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Materials - StudySync</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      integrity="sha512-d9OohV3RHaO8x+rT0zOHb6kKRxnF28eXO1Vym2uKr7buKIH81zwE7C4A07Sfb54JmN+YvQb7D0FiTdr75+ef1g=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <!-- Load Mammoth for DOCX parsing -->
+    <script src="https://unpkg.com/mammoth@1.6.0/dist/mammoth.browser.min.js"></script>
+    <!-- Load PDF.js for PDF parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+  </head>
+  <body class="bg-blue-50 text-gray-800">
+    <header class="w-full p-4 bg-white shadow">
+      <div class="max-w-5xl mx-auto flex items-center justify-between">
+        <a href="index.html" class="text-2xl font-bold text-indigo-600"
+          >StudySync</a
+        >
+        <nav class="hidden sm:flex space-x-4">
+          <a href="index.html" class="text-gray-700 hover:text-indigo-600">Home</a>
+          <a href="analytics.html" class="text-gray-700 hover:text-indigo-600">Analytics</a>
+        </nav>
+      </div>
+    </header>
+    <main class="py-12">
+      <div class="max-w-3xl mx-auto bg-white rounded-xl shadow-lg px-8 py-10">
+        <div class="w-12 h-12 flex items-center justify-center bg-green-100 text-green-600 rounded-full mb-4">
+          <i class="fas fa-upload fa-lg"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">Upload Materials</h2>
+        <p class="text-sm text-gray-600 mb-6">
+          Upload your notes in plain text, PDF or Word format. You can also
+          paste content directly. We'll extract the text and use it to
+          generate practice questions for your course.
+        </p>
+        <div class="mb-4 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Upload File</label>
+            <input
+              type="file"
+              id="fileInput"
+              accept=".txt,.pdf,.doc,.docx"
+              class="w-full border border-dashed border-gray-300 rounded-md p-2 bg-gray-50"
+              onchange="handleFileUpload(event)"
+            />
+            <p class="text-xs text-gray-500 mt-1">Accepted formats: .txt, .pdf, .doc, .docx</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Or paste your notes</label>
+            <textarea
+              id="noteText"
+              rows="8"
+              class="w-full border-gray-300 rounded-md p-2 focus:border-blue-500 focus:outline-none"
+              placeholder="Paste your notes or lecture slides here..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0 mt-4">
+          <button
+            type="button"
+            onclick="processNotes()"
+            class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition"
+          >
+            Process Notes
+          </button>
+          <button
+            type="button"
+            onclick="generateQuiz()"
+            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+          >
+            Generate Quiz
+          </button>
+        </div>
+        <div id="statusMsg" class="mt-4 text-sm text-gray-600"></div>
+      </div>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>
