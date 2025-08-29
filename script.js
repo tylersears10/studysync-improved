@@ -24,6 +24,7 @@ function initCoursePage() {
   let schools = getData('schools', null);
   if (!schools || schools.length === 0) {
     schools = [
+      // High schools and regional colleges
       'Goffstown High School',
       'Saint Anselm College',
       'Harvard University',
@@ -31,6 +32,11 @@ function initCoursePage() {
       'Stanford University',
       'New York University',
       'Boston University',
+      // Additional colleges requested by the user
+      'University of New Hampshire',
+      'Boston College',
+      'Tufts University',
+      'Dartmouth College',
     ];
     setData('schools', schools);
   }
@@ -67,6 +73,11 @@ function populateClasses() {
       'Mathematics 202',
       'Computer Science 101',
       'Physics 301',
+      // Additional classes
+      'Psychology 101',
+      'Economics 201',
+      'Philosophy 101',
+      'Statistics 101',
     ];
     setData(`classes_${selectedSchool}`, classes);
   }
@@ -100,7 +111,13 @@ function populateProfessors() {
   let profs = getData(`professors_${selectedSchool}_${selectedClass}`, null);
   if (!profs || profs.length === 0) {
     // default professors
-    profs = ['Professor Smith', 'Professor Johnson', 'Professor Lee'];
+    profs = [
+      'Professor Smith',
+      'Professor Johnson',
+      'Professor Lee',
+      'Professor Brown',
+      'Professor Davis',
+    ];
     setData(`professors_${selectedSchool}_${selectedClass}`, profs);
   }
   profSelect.innerHTML = '';
