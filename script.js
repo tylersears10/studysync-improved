@@ -357,85 +357,172 @@ const stopwords = new Set([
   'our',
 ]);
 
+/**
+ * Generate a set of multiple choice questions from the supplied notes.
+ *
+ * The algorithm attempts to identify factual statements and transform them
+ * into natural questions. It handles a few simple patterns including
+ * "The X is the Y of Z" → "What is the Y of Z?", "X is the Y"
+ * → "What is the Y?", "Photosynthesis occurs in the chloroplasts" →
+ * "Where does photosynthesis occur?", and "The capital of France is Paris"
+ * → "What is the capital of France?". For any sentences that don't
+ * match a pattern, a fallback fill‑in‑the‑blank question is used.
+ */
 function generateQuiz() {
-  const text = document.getElementById('noteText').value.trim();
-  if (!text) {
+  const rawText = document.getElementById('noteText').value.trim();
+  if (!rawText) {
     alert('Please process your notes first!');
     return;
   }
-  // Normalize whitespace and remove line breaks
-  const normalized = text.replace(/\s+/g, ' ');
-  // Split into sentences by punctuation .!? but keep actual char
-  const sentences = normalized.split(/(?<=[.!?])/g).map((s) => s.trim());
-  // Filter out very short sentences
-  const validSentences = sentences.filter((s) => s.split(' ').length >= 5);
-  if (validSentences.length === 0) {
-    alert('Not enough content to generate questions.');
-    return;
-  }
-  const allWords = normalized
-    .split(/\s+/)
-    .filter((w) => w.length > 3 && !stopwords.has(w.toLowerCase()));
+  // Normalize whitespace and collapse line breaks for easier parsing
+  const text = rawText.replace(/\s+/g, ' ');
+  // Extract sentences using punctuation; ensure we retain the period/exclamation/question
+  const sentences = text.split(/(?<=[.!?])/g).map((s) => s.trim()).filter((s) => s.length > 0);
+  // Build a list of candidate nouns from the entire text to use for distractors
+  const allWords = text.split(/\s+/).filter((w) => w.length > 3 && !stopwords.has(w.toLowerCase()));
   const uniqueWords = [...new Set(allWords)];
-  const questions = [];
-  const maxQuestions = Math.min(8, validSentences.length);
-  const usedSentences = new Set();
-  // generate up to maxQuestions
-  while (questions.length < maxQuestions && usedSentences.size < validSentences.length) {
-    const idx = Math.floor(Math.random() * validSentences.length);
-    if (usedSentences.has(idx)) continue;
-    usedSentences.add(idx);
-    const sentence = validSentences[idx];
-    // choose a keyword from sentence (not a stopword)
-    const words = sentence
-      .split(/\s+/)
-      .filter((w) => w.length > 3 && !stopwords.has(w.toLowerCase()));
-    if (words.length === 0) continue;
-    const keyword = words[Math.floor(Math.random() * words.length)];
-    // create blanked sentence by replacing keyword with ____ (only first occurrence)
-    const blanked = sentence.replace(
-      new RegExp(`\\b${escapeRegExp(keyword)}\\b`),
-      '_____'
-    );
-    // choose distractors: randomly pick 3 different words from uniqueWords not equal to keyword
-    const distractors = [];
-    const available = uniqueWords.filter((w) => w.toLowerCase() !== keyword.toLowerCase());
-    // shuffle available
+  // Helper to get random distractors not equal to the answer
+  function getDistractors(answer, count = 3) {
+    const available = uniqueWords.filter((w) => w.toLowerCase() !== answer.toLowerCase());
+    // Shuffle available list
     for (let i = available.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [available[i], available[j]] = [available[j], available[i]];
     }
+    const picks = [];
     for (const w of available) {
-      if (distractors.length >= 3) break;
-      if (!stopwords.has(w.toLowerCase())) distractors.push(w);
+      if (picks.length >= count) break;
+      // Only use distinct words, avoid stopwords
+      if (!stopwords.has(w.toLowerCase())) picks.push(w);
     }
-    // assemble options
-    const options = [keyword, ...distractors.slice(0, 3)];
-    // shuffle options
+    // If not enough, use a fallback list of generic distractors
+    const fallback = ['mitochondria', 'nucleus', 'chloroplast', 'ribosome', 'cytoplasm', 'lysosome', 'Golgi apparatus'];
+    let fi = 0;
+    while (picks.length < count) {
+      const f = fallback[fi % fallback.length];
+      if (f.toLowerCase() !== answer.toLowerCase() && !picks.includes(f)) {
+        picks.push(f);
+      }
+      fi++;
+    }
+    return picks.slice(0, count);
+  }
+  // Convert a sentence into a question object, or return null if no question can be formed
+  function sentenceToQuestion(sentence) {
+    // Patterns in order of specificity
+    const patterns = [
+      // Pattern: The mitochondria is the powerhouse of the cell.
+      {
+        regex: /^The\s+([A-Za-z\s]+?)\s+is\s+the\s+([A-Za-z\s]+?)\s+of\s+([A-Za-z\s]+?)\.?$/i,
+        build: (match) => {
+          const subject = match[1].trim();
+          const descr = match[2].trim();
+          const obj = match[3].trim();
+          const question = `What is the ${descr} of ${obj}?`;
+          const answer = subject;
+          const explanation = `In the notes, it states that ${sentence}`;
+          return { question, answer, explanation };
+        },
+      },
+      // Pattern: The capital of France is Paris.
+      {
+        regex: /^The\s+capital\s+of\s+([A-Za-z\s]+?)\s+is\s+([A-Za-z\s]+?)\.?$/i,
+        build: (match) => {
+          const obj = match[1].trim();
+          const subject = match[2].trim();
+          const question = `What is the capital of ${obj}?`;
+          const answer = subject;
+          const explanation = `According to the notes, ${sentence}`;
+          return { question, answer, explanation };
+        },
+      },
+      // Pattern: X occurs in the Y.
+      {
+        regex: /^([A-Za-z\s]+?)\s+occurs\s+in\s+the\s+([A-Za-z\s]+?)\.?$/i,
+        build: (match) => {
+          const subject = match[1].trim();
+          const location = match[2].trim();
+          const question = `Where does ${subject} occur?`;
+          const answer = location;
+          const explanation = `The notes say that ${sentence}`;
+          return { question, answer, explanation };
+        },
+      },
+      // Pattern: X is the Y.
+      {
+        regex: /^([A-Za-z\s]+?)\s+is\s+the\s+([A-Za-z\s]+?)\.?$/i,
+        build: (match) => {
+          const subject = match[1].trim();
+          const descr = match[2].trim();
+          const question = `What is the ${descr}?`;
+          const answer = subject;
+          const explanation = `From the notes: ${sentence}`;
+          return { question, answer, explanation };
+        },
+      },
+    ];
+    for (const { regex, build } of patterns) {
+      const m = sentence.match(regex);
+      if (m) {
+        return build(m);
+      }
+    }
+    // Fallback: create fill‑in‑the‑blank question as before
+    const words = sentence.split(/\s+/).filter((w) => w.length > 3 && !stopwords.has(w.toLowerCase()));
+    if (words.length === 0) return null;
+    const keyword = words[Math.floor(Math.random() * words.length)];
+    const blanked = sentence.replace(new RegExp(`\\b${escapeRegExp(keyword)}\\b`), '_____');
+    const answer = keyword;
+    const explanation = `The correct answer is "${keyword}" because the original sentence is: ${sentence}`;
+    return { question: blanked, answer, explanation, isFillIn: true };
+  }
+  const questions = [];
+  const usedIndices = new Set();
+  const maxQuestions = Math.min(8, sentences.length);
+  // Attempt to generate up to maxQuestions questions
+  while (questions.length < maxQuestions && usedIndices.size < sentences.length) {
+    const idx = Math.floor(Math.random() * sentences.length);
+    if (usedIndices.has(idx)) continue;
+    usedIndices.add(idx);
+    const sentence = sentences[idx];
+    // Skip sentences that are too short
+    if (sentence.split(' ').length < 5) continue;
+    const qObj = sentenceToQuestion(sentence);
+    if (!qObj) continue;
+    // Build options
+    let options = [];
+    if (qObj.isFillIn) {
+      // Use the old fill‑in‑the‑blank logic for options
+      const distractors = getDistractors(qObj.answer);
+      options = [qObj.answer, ...distractors];
+    } else {
+      const distractors = getDistractors(qObj.answer);
+      options = [qObj.answer, ...distractors];
+    }
+    // Shuffle options
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [options[i], options[j]] = [options[j], options[i]];
     }
-    const correctIndex = options.indexOf(keyword);
+    const correctIndex = options.findIndex((opt) => opt === qObj.answer);
     questions.push({
       sentence,
-      blanked,
+      blanked: qObj.question,
       options,
       correctIndex,
-      topicWord: keyword.toLowerCase(),
-      explanation: `The correct answer is "${keyword}" because the original sentence is: ${sentence}`,
+      topicWord: qObj.answer.toLowerCase(),
+      explanation: qObj.explanation,
     });
   }
   if (questions.length === 0) {
-    alert('Failed to generate questions.');
+    alert('Not enough content to generate questions.');
     return;
   }
-  // Save quiz data to localStorage
   setData('currentQuiz', questions);
   setData('quizProgress', 0);
   setData('quizStats', { total: questions.length, correct: 0, wrong: 0 });
   setData('quizWrongQuestions', []);
-  // Redirect to quiz page
+  // Navigate to the quiz page
   window.location.href = 'quiz.html';
 }
 
