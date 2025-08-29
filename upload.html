@@ -18,6 +18,10 @@
     <!-- Load PDF.js for PDF parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+    <!-- Include JSZip to enable client‑side extraction of DOCX files. If Mammoth
+         fails to parse a Word document, we fall back to unzipping the file
+         and reading the XML contents using JSZip. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
       // Configure pdf.js worker source for proper PDF parsing. Without this
       // assignment pdfjs may attempt to load the worker from an incorrect
