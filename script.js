@@ -18,14 +18,19 @@ function setData(key, value) {
  * ----------------------------------------------------------*/
 // Called on select_course.html load
 function initCoursePage() {
-  // Load schools array; if none, initialize with examples
+  // Load schools array; if none, initialize with examples. We include
+  // several colleges up front so users can quickly select their
+  // institution. Schools can be extended via the add form.
   let schools = getData('schools', null);
   if (!schools || schools.length === 0) {
     schools = [
       'Goffstown High School',
+      'Saint Anselm College',
       'Harvard University',
       'MIT',
       'Stanford University',
+      'New York University',
+      'Boston University',
     ];
     setData('schools', schools);
   }
@@ -44,6 +49,7 @@ function initCoursePage() {
     schoolSelect.value = currentSchool;
   }
   populateClasses();
+  populateProfessors();
 }
 
 // Populate class options based on selected school
@@ -59,6 +65,8 @@ function populateClasses() {
       'Chemistry 101',
       'History 201',
       'Mathematics 202',
+      'Computer Science 101',
+      'Physics 301',
     ];
     setData(`classes_${selectedSchool}`, classes);
   }
@@ -73,6 +81,39 @@ function populateClasses() {
   const currentClass = localStorage.getItem('currentClass');
   if (currentClass && classes.includes(currentClass)) {
     classSelect.value = currentClass;
+  }
+  // Refresh professor list whenever classes change
+  populateProfessors();
+}
+
+// Populate professor options.  Each class can have its own list of
+// professors stored in localStorage.  If none exist for the selected
+// school/class, a default set is used.  Users can extend the list
+// through future enhancements.
+function populateProfessors() {
+  const school = document.getElementById('school');
+  const classSelect = document.getElementById('class');
+  const profSelect = document.getElementById('professor');
+  if (!profSelect) return;
+  const selectedSchool = school.value;
+  const selectedClass = classSelect.value;
+  let profs = getData(`professors_${selectedSchool}_${selectedClass}`, null);
+  if (!profs || profs.length === 0) {
+    // default professors
+    profs = ['Professor Smith', 'Professor Johnson', 'Professor Lee'];
+    setData(`professors_${selectedSchool}_${selectedClass}`, profs);
+  }
+  profSelect.innerHTML = '';
+  profs.forEach((p) => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p;
+    profSelect.appendChild(opt);
+  });
+  // Pre-select previously selected professor
+  const currentProf = localStorage.getItem('currentProfessor');
+  if (currentProf && profs.includes(currentProf)) {
+    profSelect.value = currentProf;
   }
 }
 
@@ -121,12 +162,17 @@ function addSchoolClass() {
 function saveCourse() {
   const school = document.getElementById('school').value;
   const cls = document.getElementById('class').value;
+  const profSelect = document.getElementById('professor');
+  const prof = profSelect ? profSelect.value : '';
   if (!school || !cls) {
     alert('Please select a school and class');
     return;
   }
   localStorage.setItem('currentSchool', school);
   localStorage.setItem('currentClass', cls);
+  if (prof) {
+    localStorage.setItem('currentProfessor', prof);
+  }
   // redirect to upload
   window.location.href = 'upload.html';
 }
